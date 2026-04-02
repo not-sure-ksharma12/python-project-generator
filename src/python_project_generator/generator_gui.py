@@ -689,7 +689,17 @@ if WX_AVAILABLE:
             
             features = self.get_selected_features()
             package_name = project_name.lower().replace('-', '_').replace(' ', '_')
+            self._log_preview_core_structure(project_name, package_name, features)
+            self._log_preview_scripts_section(features)
             
+            self.log_to_output("")
+            self.log_to_output("=== End Preview ===")
+            self.log_to_output("")
+        
+        def _log_preview_core_structure(
+            self, project_name: str, package_name: str, features: Dict[str, Any]
+        ):
+            """Emit main package and optional top-level file lines for structure preview."""
             self.log_to_output(f"{project_name}/")
             self.log_to_output("├── src/")
             self.log_to_output(f"│   └── {package_name}/")
@@ -718,8 +728,9 @@ if WX_AVAILABLE:
             
             if features.get('gitignore'):
                 self.log_to_output("├── .gitignore")
-
-            # Optional helper scripts
+        
+        def _log_preview_scripts_section(self, features: Dict[str, Any]):
+            """Emit optional scripts/ subtree if any helper feature is selected."""
             # Optional helper scripts under scripts/
             if any([
                 features.get('mac_app_bundle'),
@@ -739,10 +750,6 @@ if WX_AVAILABLE:
                     self.log_to_output("│   ├── freeze_requirements.py")
                 if features.get('setup_build_script'):
                     self.log_to_output("│   └── build_with_setup.py")
-            
-            self.log_to_output("")
-            self.log_to_output("=== End Preview ===")
-            self.log_to_output("")
         
         def on_generate(self, event):
             """Generate the project."""
