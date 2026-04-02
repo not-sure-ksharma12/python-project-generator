@@ -18,6 +18,12 @@ from datetime import datetime
 import json
 
 
+# Pilot (#24): single source of truth for selected builtin templates. Maps template_id -> ProjectGenerator method name.
+_BUILTIN_TEMPLATE_GENERATOR_PILOT: Dict[str, str] = {
+    "django-web-app": "_generate_minimal_template",
+}
+
+
 class TemplateManager:
     """Manages project templates from various sources."""
     
@@ -1239,12 +1245,15 @@ if __name__ == '__main__':
             
             # Generate based on template type
             success = False
-            if template_id == "flask-web-app":
+            if template_id in _BUILTIN_TEMPLATE_GENERATOR_PILOT:
+                gen_name = _BUILTIN_TEMPLATE_GENERATOR_PILOT[template_id]
+                success = getattr(self, gen_name)(
+                    project_path, project_name, package_name, features, metadata
+                )
+            elif template_id == "flask-web-app":
                 success = self._generate_flask_template(project_path, project_name, package_name, features, metadata)
             elif template_id == "fastapi-web-api":
                 success = self._generate_fastapi_template(project_path, project_name, package_name, features, metadata)
-            elif template_id == "django-web-app":
-                success = self._generate_django_template(project_path, project_name, package_name, features, metadata)
             elif template_id == "data-science-project":
                 success = self._generate_data_science_template(project_path, project_name, package_name, features, metadata)
             elif template_id == "machine-learning-project":
