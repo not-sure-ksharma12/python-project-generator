@@ -82,8 +82,8 @@ def create_icon():
         font_size = 80
         font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc",
                                   font_size)
-    except:
-        # Fallback to default font
+    except Exception:
+        # Fallback to default font (do not catch SystemExit / KeyboardInterrupt)
         font = ImageFont.load_default()
 
     title = "PPG"
