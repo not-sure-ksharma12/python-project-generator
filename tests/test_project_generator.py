@@ -15,7 +15,12 @@ _SRC = _ROOT / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from python_project_generator.project_generator import ProjectGenerator, TemplateManager, setup_logging
+from python_project_generator.project_generator import (
+    ProjectGenerator,
+    TemplateManager,
+    _BUILTIN_TEMPLATE_GENERATOR_PILOT,
+    setup_logging,
+)
 
 
 class TestTemplateManager(unittest.TestCase):
@@ -203,6 +208,36 @@ class TestProjectGenerator(unittest.TestCase):
         """setup_logging must be callable with no duplicate module-level definitions (#23)."""
         setup_logging()
         setup_logging("DEBUG")
+    
+    def test_builtin_template_registry_pilot_django(self):
+        """django-web-app maps via pilot registry to minimal generator (#24)."""
+        self.assertEqual(
+            _BUILTIN_TEMPLATE_GENERATOR_PILOT.get("django-web-app"),
+            "_generate_minimal_template",
+        )
+        project_name = "django_registry_pilot"
+        features = {
+            "cli": False,
+            "tests": True,
+            "pypi_packaging": True,
+            "readme": True,
+            "gitignore": True,
+        }
+        metadata = {
+            "author": "Test",
+            "email": "t@example.com",
+            "description": "test",
+            "version": "0.1.0",
+        }
+        result = self.generator.generate_project(
+            project_name=project_name,
+            output_dir=self.temp_dir,
+            template_id="django-web-app",
+            features=features,
+            metadata=metadata,
+        )
+        self.assertTrue(result)
+        self.assertTrue((self.temp_dir / project_name).is_dir())
 
 
 if __name__ == "__main__":
