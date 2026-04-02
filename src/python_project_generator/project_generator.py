@@ -1128,12 +1128,12 @@ if __name__ == '__main__':
         for file_pattern in text_files:
             for file_path in project_path.rglob(file_pattern):
                 if file_path.is_file():
-                    self._update_file_content(file_path, replacements)
+                    self._update_file_content(project_path, file_path, replacements)
         
         # Update Python files
         for py_file in project_path.rglob("*.py"):
             if py_file.is_file():
-                self._update_file_content(py_file, replacements)
+                self._update_file_content(project_path, py_file, replacements)
         
         # Rename skeleton directory to new package name
         src_dir = project_path / "src"
@@ -1143,15 +1143,39 @@ if __name__ == '__main__':
                 new_package_dir = src_dir / package_name
                 skeleton_dir.rename(new_package_dir)
     
-    def _update_file_content(self, file_path: Path, replacements: Dict[str, str]):
-        """Update file content with replacements."""
+    def _resolved_path_within_project(self, project_root: Path, candidate: Path) -> Optional[Path]:
+        """Resolve candidate and return it only if it lies under project_root (path injection guard)."""
         try:
-            content = file_path.read_text(encoding='utf-8')
+            root_resolved = project_root.resolve()
+            target_resolved = candidate.resolve()
+        except (OSError, RuntimeError):
+            return None
+        try:
+            target_resolved.relative_to(root_resolved)
+        except ValueError:
+            return None
+        return target_resolved
+    
+    def _update_file_content(self, project_path: Path, file_path: Path, replacements: Dict[str, str]):
+        """Update file content with replacements."""
+        safe_path = self._resolved_path_within_project(project_path, file_path)
+        if safe_path is None:
+            self.logger.warning(f"Skipping update outside project directory: {file_path}")
+            return
+        try:
+            root_resolved = project_path.resolve()
+            rel = safe_path.relative_to(root_resolved)
+            trusted_io_path = root_resolved.joinpath(*rel.parts)
+        except (OSError, RuntimeError, ValueError) as e:
+            self.logger.warning(f"Could not resolve safe path for update {file_path}: {e}")
+            return
+        try:
+            content = trusted_io_path.read_text(encoding='utf-8')
             
             for old_text, new_text in replacements.items():
                 content = content.replace(old_text, new_text)
             
-            file_path.write_text(content, encoding='utf-8')
+            trusted_io_path.write_text(content, encoding='utf-8')
             
         except Exception as e:
             self.logger.warning(f"Could not update {file_path}: {e}")
