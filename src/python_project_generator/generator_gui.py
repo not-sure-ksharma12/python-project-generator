@@ -614,46 +614,41 @@ if WX_AVAILABLE:
         
         def update_template_info(self):
             """Update the template information display."""
-            if hasattr(self, 'template_choice') and hasattr(self, 'template_ids'):
-                selection = self.template_choice.GetSelection()
-                if selection >= 0 and selection < len(self.template_ids):
-                    template_id = self.template_ids[selection]
-                    
-                    # Get detailed template information
-                    detailed_info = self.template_manager.get_template_detailed_info(template_id)
-                    
-                    if "error" not in detailed_info:
-                        # Update description
-                        self.template_desc.SetLabel(detailed_info['description'])
-                        
-                        # Update key features
-                        features_text = "\n".join(f"• {feature}" for feature in detailed_info['key_features'])
-                        self.template_features.SetLabel(features_text)
-                        
-                        # Update use cases
-                        cases_text = "\n".join(f"• {case}" for case in detailed_info['use_cases'])
-                        self.template_cases.SetLabel(cases_text)
-                        
-                        # Update dependencies
-                        deps_text = ", ".join(detailed_info['dependencies'])
-                        self.template_deps.SetLabel(deps_text)
-                        
-                        # Update project structure
-                        structure_text = "\n".join(detailed_info['project_structure'])
-                        self.template_structure.SetValue(structure_text)
-                        
-                        # Update layout
-                        if hasattr(self, 'template_panel'):
-                            self.template_panel.Layout()
-                            self.template_panel.FitInside()
-                    else:
-                        # Handle error case
-                        self.template_desc.SetLabel("Template information not available")
-                        if hasattr(self, 'template_features'):
-                            self.template_features.SetLabel("")
-                            self.template_cases.SetLabel("")
-                            self.template_deps.SetLabel("")
-                            self.template_structure.SetValue("")
+            if not (hasattr(self, 'template_choice') and hasattr(self, 'template_ids')):
+                return
+            selection = self.template_choice.GetSelection()
+            if selection < 0 or selection >= len(self.template_ids):
+                return
+            template_id = self.template_ids[selection]
+            detailed_info = self.template_manager.get_template_detailed_info(template_id)
+            if "error" in detailed_info:
+                self._clear_template_info_display()
+            else:
+                self._apply_template_detailed_info(detailed_info)
+        
+        def _clear_template_info_display(self):
+            """Show unavailable template message and clear detail widgets."""
+            self.template_desc.SetLabel("Template information not available")
+            if hasattr(self, 'template_features'):
+                self.template_features.SetLabel("")
+                self.template_cases.SetLabel("")
+                self.template_deps.SetLabel("")
+                self.template_structure.SetValue("")
+        
+        def _apply_template_detailed_info(self, detailed_info: Dict[str, Any]):
+            """Populate template detail widgets from API result."""
+            self.template_desc.SetLabel(detailed_info['description'])
+            features_text = "\n".join(f"• {feature}" for feature in detailed_info['key_features'])
+            self.template_features.SetLabel(features_text)
+            cases_text = "\n".join(f"• {case}" for case in detailed_info['use_cases'])
+            self.template_cases.SetLabel(cases_text)
+            deps_text = ", ".join(detailed_info['dependencies'])
+            self.template_deps.SetLabel(deps_text)
+            structure_text = "\n".join(detailed_info['project_structure'])
+            self.template_structure.SetValue(structure_text)
+            if hasattr(self, 'template_panel'):
+                self.template_panel.Layout()
+                self.template_panel.FitInside()
         
         def on_browse_output(self, event):
             """Handle browse output directory button."""
