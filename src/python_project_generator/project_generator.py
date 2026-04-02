@@ -6245,15 +6245,6 @@ def setup_logging(level: str = "INFO") -> None:
     )
 
 
-def setup_logging(level: str = "INFO") -> None:
-    """Set up logging configuration."""
-    logging.basicConfig(
-        level=getattr(logging, level.upper()),
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[logging.StreamHandler()]
-    )
-
-
 def main():
     """
     Main CLI entry point for the project generator.

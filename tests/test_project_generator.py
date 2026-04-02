@@ -15,7 +15,7 @@ _SRC = _ROOT / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from python_project_generator.project_generator import ProjectGenerator, TemplateManager
+from python_project_generator.project_generator import ProjectGenerator, TemplateManager, setup_logging
 
 
 class TestTemplateManager(unittest.TestCase):
@@ -198,6 +198,11 @@ class TestProjectGenerator(unittest.TestCase):
         target.write_text("skeleton line", encoding="utf-8")
         self.generator._update_file_content(root, target, {"skeleton": "my_pkg"})
         self.assertEqual(target.read_text(encoding="utf-8"), "my_pkg line")
+    
+    def test_setup_logging_is_single_definition_and_runs(self):
+        """setup_logging must be callable with no duplicate module-level definitions (#23)."""
+        setup_logging()
+        setup_logging("DEBUG")
 
 
 if __name__ == "__main__":
