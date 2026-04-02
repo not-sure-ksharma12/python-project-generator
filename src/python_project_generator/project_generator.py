@@ -1143,39 +1143,36 @@ if __name__ == '__main__':
                 new_package_dir = src_dir / package_name
                 skeleton_dir.rename(new_package_dir)
     
-    def _resolved_path_within_project(self, project_root: Path, candidate: Path) -> Optional[Path]:
-        """Resolve candidate and return it only if it lies under project_root (path injection guard)."""
+    def _safe_path_for_project_file_io(self, project_root: Path, candidate: Path) -> Optional[Path]:
+        """Path for file I/O only if candidate resolves under project_root; built stepwise (S2083)."""
         try:
-            root_resolved = project_root.resolve()
-            target_resolved = candidate.resolve()
-        except (OSError, RuntimeError):
+            root = project_root.resolve()
+            resolved = candidate.resolve()
+            rel = resolved.relative_to(root)
+        except (OSError, RuntimeError, ValueError):
             return None
-        try:
-            target_resolved.relative_to(root_resolved)
-        except ValueError:
-            return None
-        return target_resolved
+        path = root
+        for name in rel.parts:
+            if name == "..":
+                return None
+            path = path / name
+        return path
     
     def _update_file_content(self, project_path: Path, file_path: Path, replacements: Dict[str, str]):
         """Update file content with replacements."""
-        safe_path = self._resolved_path_within_project(project_path, file_path)
-        if safe_path is None:
+        path = self._safe_path_for_project_file_io(project_path, file_path)
+        if path is None:
             self.logger.warning(f"Skipping update outside project directory: {file_path}")
             return
         try:
-            root_resolved = project_path.resolve()
-            rel = safe_path.relative_to(root_resolved)
-            trusted_io_path = root_resolved.joinpath(*rel.parts)
-        except (OSError, RuntimeError, ValueError) as e:
-            self.logger.warning(f"Could not resolve safe path for update {file_path}: {e}")
-            return
-        try:
-            content = trusted_io_path.read_text(encoding='utf-8')
+            with path.open("r", encoding="utf-8") as f:
+                content = f.read()
             
             for old_text, new_text in replacements.items():
                 content = content.replace(old_text, new_text)
             
-            trusted_io_path.write_text(content, encoding='utf-8')
+            with path.open("w", encoding="utf-8") as f:
+                f.write(content)
             
         except Exception as e:
             self.logger.warning(f"Could not update {file_path}: {e}")
