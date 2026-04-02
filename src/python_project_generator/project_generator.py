@@ -1128,12 +1128,12 @@ if __name__ == '__main__':
         for file_pattern in text_files:
             for file_path in project_path.rglob(file_pattern):
                 if file_path.is_file():
-                    self._update_file_content(file_path, replacements)
+                    self._update_file_content(project_path, file_path, replacements)
         
         # Update Python files
         for py_file in project_path.rglob("*.py"):
             if py_file.is_file():
-                self._update_file_content(py_file, replacements)
+                self._update_file_content(project_path, py_file, replacements)
         
         # Rename skeleton directory to new package name
         src_dir = project_path / "src"
@@ -1143,15 +1143,36 @@ if __name__ == '__main__':
                 new_package_dir = src_dir / package_name
                 skeleton_dir.rename(new_package_dir)
     
-    def _update_file_content(self, file_path: Path, replacements: Dict[str, str]):
-        """Update file content with replacements."""
+    def _safe_path_for_project_file_io(self, project_root: Path, candidate: Path) -> Optional[Path]:
+        """Path for file I/O only if candidate resolves under project_root; built stepwise (S2083)."""
         try:
-            content = file_path.read_text(encoding='utf-8')
+            root = project_root.resolve()
+            resolved = candidate.resolve()
+            rel = resolved.relative_to(root)
+        except (OSError, RuntimeError, ValueError):
+            return None
+        path = root
+        for name in rel.parts:
+            if name == "..":
+                return None
+            path = path / name
+        return path
+    
+    def _update_file_content(self, project_path: Path, file_path: Path, replacements: Dict[str, str]):
+        """Update file content with replacements."""
+        path = self._safe_path_for_project_file_io(project_path, file_path)
+        if path is None:
+            self.logger.warning(f"Skipping update outside project directory: {file_path}")
+            return
+        try:
+            with path.open("r", encoding="utf-8") as f:
+                content = f.read()
             
             for old_text, new_text in replacements.items():
                 content = content.replace(old_text, new_text)
             
-            file_path.write_text(content, encoding='utf-8')
+            with path.open("w", encoding="utf-8") as f:
+                f.write(content)
             
         except Exception as e:
             self.logger.warning(f"Could not update {file_path}: {e}")

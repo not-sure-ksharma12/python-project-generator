@@ -173,6 +173,31 @@ class TestProjectGenerator(unittest.TestCase):
         for input_name, expected in test_cases:
             result = self.generator._to_class_name(input_name)
             self.assertEqual(result, expected)
+    
+    def test_update_file_content_skips_path_outside_project(self):
+        """Paths that resolve outside the project root must not be read or written (S2083)."""
+        root = self.temp_dir / "proj"
+        root.mkdir()
+        outside_dir = self.temp_dir / "outside"
+        outside_dir.mkdir()
+        outside_file = outside_dir / "secret.txt"
+        outside_file.write_text("skeleton-unchanged", encoding="utf-8")
+        traversal_path = root / ".." / "outside" / "secret.txt"
+        self.generator._update_file_content(
+            root,
+            traversal_path,
+            {"skeleton-unchanged": "tampered"},
+        )
+        self.assertEqual(outside_file.read_text(encoding="utf-8"), "skeleton-unchanged")
+    
+    def test_update_file_content_updates_file_inside_project(self):
+        """In-project paths still receive placeholder replacement."""
+        root = self.temp_dir / "proj"
+        root.mkdir()
+        target = root / "setup.py"
+        target.write_text("skeleton line", encoding="utf-8")
+        self.generator._update_file_content(root, target, {"skeleton": "my_pkg"})
+        self.assertEqual(target.read_text(encoding="utf-8"), "my_pkg line")
 
 
 if __name__ == "__main__":
